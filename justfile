@@ -1,70 +1,56 @@
-# remove all build, test, coverage and Python artifacts
-clean: clean-build clean-pyc clean-test 
+# Run all the formatting, linting, and testing commands
+qa:
+    ruff format .
+    ruff check . --fix
+    ruff check --select I --fix .
+    ty check .
+    pytest .
 
-# remove build artifacts
-clean-build:
-	rm -fr build/
-	rm -fr dist/
-	rm -fr .eggs/
-	find . -name '*.egg-info' -exec rm -fr {} +
-	find . -name '*.egg' -exec rm -f {} +
+# Run all the tests for all the supported Python versions
+testall:
+    uv run --python=3.10 --extra test pytest
+    uv run --python=3.11 --extra test pytest
+    uv run --python=3.12 --extra test pytest
+    uv run --python=3.13 --extra test pytest
 
-# remove Python file artifacts
-clean-pyc:
-	find . -name '*.pyc' -exec rm -f {} +
-	find . -name '*.pyo' -exec rm -f {} +
-	find . -name '*~' -exec rm -f {} +
-	find . -name '__pycache__' -exec rm -fr {} +
+# Run all the tests, but allow for arguments to be passed
+test *ARGS:
+    @echo "Running with arg: {{ARGS}}"
+    uv run --python=3.13 --extra test pytest {{ARGS}}
 
-# remove test and coverage artifacts
-clean-test: 
-	rm -fr .tox/
-	rm -f .coverage
-	rm -fr htmlcov/
-	rm -fr .pytest_cache
+# Run all the tests, but on failure, drop into the debugger
+pdb *ARGS:
+    @echo "Running with arg: {{ARGS}}"
+    uv run --python=3.13 --with pytest --with httpx pytest --pdb --maxfail=10 --pdbcls=IPython.terminal.debugger:TerminalPdb {{ARGS}}
 
-# check style
-ruff: 
-	ruff check
-
-# run tests quickly with the default Python
-test: 
-	pytest
-
-# run tests on every Python version with uv
-test-all: 
-	uv run --python=3.10 --extra test pytest
-	uv run --python=3.11 --extra test pytest
-	uv run --python=3.12 --extra test pytest
-	uv run --python=3.13 --extra test pytest
-
-# check code coverage quickly with the default Python
-coverage: 
-	coverage run --source air_cli -m pytest
-	coverage report -m
-	coverage html
-	$(BROWSER) htmlcov/index.html
-
-# generate Sphinx HTML documentation, including API docs
-docs: 
-	rm -f docs/air_cli.md
-	rm -f docs/modules.md
-	sphinx-apidoc -o docs/ air_cli
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
-
-# compile the docs watching for changes
-servedocs: docs 
-	watchmedo shell-command -p '*.md' -c '$(MAKE) -C docs html' -R -D .
-
-# package and upload a release
-release: dist 
-	uv publish -t $(UV_PUBLISH_TOKEN)
+# Run coverage, and build to HTML
+coverage:
+    coverage run -m pytest .
+    coverage report -m
+    coverage html
 
 # Build the project, useful for checking that packaging is correct
-build: 
-	rm -rf build
-	rm -rf dist
-	uv build	
+build:
+    rm -rf build
+    rm -rf dist
+    uv build
 
+VERSION := `grep -m1 '^version' pyproject.toml | sed -E 's/version = "(.*)"/\1/'`
+
+# Print the current version of the project
+version:
+    @echo "Current version is {{VERSION}}"
+
+# Tag the current version in git and put to github
+tag:
+    echo "Tagging version v{{VERSION}}"
+    git tag -a v{{VERSION}} -m "Creating version v{{VERSION}}"
+    git push origin v{{VERSION}}
+
+# Serve docs locally
+doc:
+    uv run --extra docs mkdocs serve -a localhost:3000
+
+# Build and deploy docs
+doc-build:
+    mkdocs gh-deploy --force

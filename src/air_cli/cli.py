@@ -1,21 +1,26 @@
-"""Console script for air_cli."""
+from pathlib import Path
+from typing import Annotated
 
 import typer
-from rich.console import Console
 
-from air_cli import utils
+from .generator import StaticSiteGenerator
+from .plugins.markdown_plugin import MarkdownPlugin
 
 app = typer.Typer()
-console = Console()
 
 
 @app.command()
-def main():
-    """Console script for air_cli."""
-    console.print("Replace this message by putting your code into "
-               "air_cli.cli.main")
-    console.print("See Typer documentation at https://typer.tiangolo.com/")
-    utils.do_something_useful()
+def html(
+    source_dir: Annotated[Path, typer.Argument()] = Path("input"),
+    output_dir: Annotated[Path, typer.Argument()] = Path("public"),
+) -> int:
+    """Build a static site from source files."""
+    print("Building site...")
+    generator = StaticSiteGenerator(source_dir, output_dir)
+    generator.register_plugin(MarkdownPlugin)
+    generator.build()
+    print(f"Site built from {source_dir}/ to {output_dir}/")
+    return 0
 
 
 if __name__ == "__main__":
