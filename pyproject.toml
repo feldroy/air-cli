@@ -1,6 +1,6 @@
 [project]
 name = "air-cli"
-version = "0.1.1"
+version = "0.2.0"
 description = "Run and manage Air apps from the CLI."
 readme = "README.md"
 authors = [
